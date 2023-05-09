@@ -1,0 +1,174 @@
+{
+    "id": "644b808429387d3cb0318da0",
+    "name": "sensor_data",
+    "jobId": "6459fff11628d80b5c8248fc",
+    "jobTaskId": "6459fff11628d80b5c8248fd",
+    "build_operation": {
+        "ops": [
+            {
+                "type": "filter",
+                "id": 1682668432765,
+                "value": [
+                    {
+                        "or": [
+                            {
+                                "__comment": "specification of an op, specific to op",
+                                "at": "$",
+                                "where": {
+                                    "field": "timestamp",
+                                    "operator": "expression",
+                                    "value": "interval(60)"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "type": "enrich_api",
+                "id": 1682668452563,
+                "value": [
+                    {
+                        "api_link": "http://40.124.169.219:3000/api/well/?well_id={well_id}&start_date={timestamp}&end_date={timestamp}",
+                        "method": "get",
+                        "response_schema": {
+                            "fields": [
+                                {
+                                    "name": "production_volume_oil",
+                                    "pattern": "production_volume.oil"
+                                },
+                                {
+                                    "name": "production_volume_gas",
+                                    "pattern": "production_volume.gas"
+                                },
+                                {
+                                    "name": "production_volume_water",
+                                    "pattern": "production_volume.water"
+                                }
+                            ]
+                        },
+                        "body": {}
+                    },
+                    {
+                        "api_link": "http://40.124.169.219:3000/api/well/?well_id={well_id}&start_date=sub_seconds({timestamp}, 60)&end_date={timestamp}",
+                        "response_schema": {
+                            "fields": [
+                                {
+                                    "name": "production_volume_oil_previous",
+                                    "pattern": "production_volume.oil"
+                                },
+                                {
+                                    "name": "production_volume_gas_previous",
+                                    "pattern": "production_volume.gas"
+                                },
+                                {
+                                    "name": "production_volume_water_previous",
+                                    "pattern": "production_volume.water"
+                                }
+                            ]
+                        },
+                        "method": "get",
+                        "body": {}
+                    }
+                ]
+            }
+        ]
+    },
+    "userId": "642664152a9ea736837171b4",
+    "is_enabled": false,
+    "image": "etl-modules",
+    "version": "latest",
+    "source": {
+        "id": "6424fb07a2f9c3246f4e2239",
+        "type": "Pulsar",
+        "name": "Pulsar",
+        "hostname": "40.124.169.219",
+        "port": "6650",
+        "api_port": "8080",
+        "tenant": "public",
+        "namespace": "default",
+        "api-version": "/admin/v2",
+        "topic": "non-persistent://public/default/sensor",
+        "schema": {
+            "type": "record",
+            "name": "SensorRecord",
+            "fields": [
+                {
+                    "name": "timestamp",
+                    "type": [
+                        "null",
+                        "string"
+                    ]
+                },
+                {
+                    "name": "temperature",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "name": "pressure",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "name": "flow_rate",
+                    "type": [
+                        "null",
+                        "int"
+                    ]
+                },
+                {
+                    "name": "well_id",
+                    "type": [
+                        "null",
+                        "string"
+                    ]
+                }
+            ]
+        }
+    },
+    "destinations": [
+        {
+            "id": "6437a2b67d71c3349d790c2c",
+            "type": "MySQL",
+            "name": "MySQL-Azure",
+            "host": "40.124.169.219",
+            "port": "3306",
+            "user": "mysqluser",
+            "password": "mysqlpw",
+            "database": "inventory",
+            "ssl": false,
+            "schema": {
+                "create_tables": [
+                    "CREATE TABLE `Tank` (`id` int NOT NULL AUTO_INCREMENT, well_id nvarchar(220) NULL, flow_rate int NULL, pressure int NULL, temperature int NULL, timestamp nvarchar(220) NULL, production_volume_water_previous nvarchar(220) NULL, production_volume_gas_previous nvarchar(220) NULL, production_volume_oil_previous nvarchar(220) NULL, production_volume_water nvarchar(220) NULL, production_volume_gas nvarchar(220) NULL, production_volume_oil nvarchar(220) NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB"
+                ],
+                "sink_to": "Tank",
+                "select": [
+                    "well_id",
+                    "flow_rate",
+                    "pressure",
+                    "temperature",
+                    "timestamp",
+                    "production_volume_water_previous",
+                    "production_volume_gas_previous",
+                    "production_volume_oil_previous",
+                    "production_volume_water",
+                    "production_volume_gas",
+                    "production_volume_oil"
+                ]
+            }
+        },
+        {
+            "type": "logfile",
+            "name": "Logfile",
+            "schema": {
+                "filename": "6459fff11628d80b5c8248fd.log",
+                "logpath": "C:/tmp/Agent2/conf/sensor_data_644b808429387d3cb0318da0"
+            }
+        }
+    ]
+}
