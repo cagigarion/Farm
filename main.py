@@ -9,20 +9,19 @@ from config import *
 import threading
 from setup_coinfig import SetupConfig
 import configparser
+from report import report_check_worker
 
 logging.getLogger("pika").propagate = False
 
-logs_path = PATH_CONFIG + "logs/"
-
 
 def get_setup_configs_raw() -> list:
-    path = PATH_CONFIG + ".config"
+    path = get_path_config() + ".config"
     with open(path) as flog:
         return json.loads(flog.read())
 
 
 def write_setup_configs(setup_configs: list[dict]) -> list:
-    path = PATH_CONFIG + ".config"
+    path = get_path_config() + ".config"
     if setup_configs is None:
         return
     with open(path, "w") as config_file:
@@ -43,12 +42,11 @@ class Threaded_worker(threading.Thread):
 
     def callback_databiz(self, ch, method, properties, body):
         try:
-            # print(f"{datetime.datetime.now()} Received Message: {body.decode()}")
-
             # send message to identify service
             # public_message("", queue_name=DATABIZ_QUEUE_IDENTIFY, message="Received Message")
             # need to receive authentication
             # save file to folder config
+
             client = docker.from_env()
             data_config = json.loads(body.decode())
             container_name_unique = data_config["name"] + \
@@ -71,8 +69,8 @@ class Threaded_worker(threading.Thread):
             folder_name = data_config["name"] + "_" + data_config["id"]
             file_job_name = data_config["jobTaskId"]
             # path file json pipeline
-            path = PATH_CONFIG
-            etl_mount_folder = PATH_CONFIG
+            path = get_path_config()
+            etl_mount_folder = get_path_config()
             # self.make_folder(path)
             pipeline_name_location = f'{path}{folder_name}'
             self.make_folder(pipeline_name_location)
@@ -91,7 +89,8 @@ class Threaded_worker(threading.Thread):
             # path file .config support read line log
             log_fname = f"{pipeline_name_location}/{file_job_name}.log"
             setup_configs = get_setup_configs_raw()
-            setup_configs.append(SetupConfig(0, file_job_name, log_fname).__dict__)
+            setup_configs.append(SetupConfig(
+                0, file_job_name, log_fname).__dict__)
             print("start container:")
             print(setup_configs)
             write_setup_configs(setup_configs)
@@ -105,10 +104,6 @@ class Threaded_worker(threading.Thread):
             '''
             config logs path file
             '''
-            # isExitLogPath = os.path.exists(logs_path)
-            # if not isExitLogPath:
-            #     # Create a new directory because it does not exist
-            #     os.makedirs(logs_path)
             create_log_conf_file(
                 f"{PATH_MAP}/{folder_name}/{file_job_name}.log", pipeline_name_location)
 
@@ -144,9 +139,9 @@ class Threaded_worker(threading.Thread):
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=RABBITMQ_HOST))
         self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=DATABIZ_QUEUE)
+        self.channel.queue_declare(queue=get_databiz_queue())
         self.channel.basic_consume(
-            queue=DATABIZ_QUEUE, on_message_callback=self.callback_databiz, auto_ack=True)
+            queue=get_databiz_queue(), on_message_callback=self.callback_databiz, auto_ack=True)
 
     def run(self):
         print(' [*] Waiting for messages. To exit press CTRL+C')
@@ -198,12 +193,30 @@ if __name__ == '__main__':
     we have a log filw with field "id"
 
     '''
-    make_folder(PATH_CONFIG)
+
+    make_folder(get_path_config())
     write_setup_configs([])
 
     try:
+        json_farm= get_farm_file_bytes()
+        
+        connection = pika.BlockingConnection(
+                        pika.ConnectionParameters(host=RABBITMQ_HOST))
+        channel = connection.channel()
+        channel.exchange_declare(
+            exchange='farm.fanout', exchange_type='fanout')
+        channel.queue_declare(queue='databiz-agent-check', durable=True)
+        channel.basic_publish(exchange='farm.fanout',
+                                routing_key='databiz-agent-check',
+                                body=json_farm,
+                                properties=pika.BasicProperties(delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE))
+        connection.close()
+
         td = Threaded_worker()
         td.start()
+
+        farm_check = report_check_worker()
+        farm_check.start()
 
         while (True):
             time.sleep(10)
@@ -262,7 +275,8 @@ if __name__ == '__main__':
                 '''
 
             setup_configs_raw = get_setup_configs_raw()
-            setup_configs_updated = [setup_config.__dict__ for setup_config in setup_configs]
+            setup_configs_updated = [
+                setup_config.__dict__ for setup_config in setup_configs]
             len_setup_configs_raw = setup_configs_raw.__len__()
             if setup_configs_updated.__len__() < setup_configs_raw.__len__():
                 i = setup_configs_updated.__len__()

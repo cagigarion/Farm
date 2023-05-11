@@ -1,174 +1,122 @@
 {
-    "id": "644b808429387d3cb0318da0",
-    "name": "sensor_data",
-    "jobId": "6459fff11628d80b5c8248fc",
-    "jobTaskId": "6459fff11628d80b5c8248fd",
-    "build_operation": {
-        "ops": [
-            {
-                "type": "filter",
-                "id": 1682668432765,
-                "value": [
-                    {
-                        "or": [
-                            {
-                                "__comment": "specification of an op, specific to op",
-                                "at": "$",
-                                "where": {
-                                    "field": "timestamp",
-                                    "operator": "expression",
-                                    "value": "interval(60)"
-                                }
-                            }
-                        ]
-                    }
-                ]
-            },
-            {
-                "type": "enrich_api",
-                "id": 1682668452563,
-                "value": [
-                    {
-                        "api_link": "http://40.124.169.219:3000/api/well/?well_id={well_id}&start_date={timestamp}&end_date={timestamp}",
-                        "method": "get",
-                        "response_schema": {
-                            "fields": [
-                                {
-                                    "name": "production_volume_oil",
-                                    "pattern": "production_volume.oil"
-                                },
-                                {
-                                    "name": "production_volume_gas",
-                                    "pattern": "production_volume.gas"
-                                },
-                                {
-                                    "name": "production_volume_water",
-                                    "pattern": "production_volume.water"
-                                }
-                            ]
-                        },
-                        "body": {}
-                    },
-                    {
-                        "api_link": "http://40.124.169.219:3000/api/well/?well_id={well_id}&start_date=sub_seconds({timestamp}, 60)&end_date={timestamp}",
-                        "response_schema": {
-                            "fields": [
-                                {
-                                    "name": "production_volume_oil_previous",
-                                    "pattern": "production_volume.oil"
-                                },
-                                {
-                                    "name": "production_volume_gas_previous",
-                                    "pattern": "production_volume.gas"
-                                },
-                                {
-                                    "name": "production_volume_water_previous",
-                                    "pattern": "production_volume.water"
-                                }
-                            ]
-                        },
-                        "method": "get",
-                        "body": {}
-                    }
-                ]
-            }
-        ]
-    },
-    "userId": "642664152a9ea736837171b4",
-    "is_enabled": false,
-    "image": "etl-modules",
-    "version": "latest",
-    "source": {
-        "id": "6424fb07a2f9c3246f4e2239",
-        "type": "Pulsar",
-        "name": "Pulsar",
-        "hostname": "40.124.169.219",
-        "port": "6650",
-        "api_port": "8080",
-        "tenant": "public",
-        "namespace": "default",
-        "api-version": "/admin/v2",
-        "topic": "non-persistent://public/default/sensor",
-        "schema": {
-            "type": "record",
-            "name": "SensorRecord",
-            "fields": [
-                {
-                    "name": "timestamp",
-                    "type": [
-                        "null",
-                        "string"
-                    ]
-                },
-                {
-                    "name": "temperature",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "name": "pressure",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "name": "flow_rate",
-                    "type": [
-                        "null",
-                        "int"
-                    ]
-                },
-                {
-                    "name": "well_id",
-                    "type": [
-                        "null",
-                        "string"
-                    ]
-                }
-            ]
-        }
-    },
-    "destinations": [
-        {
-            "id": "6437a2b67d71c3349d790c2c",
-            "type": "MySQL",
-            "name": "MySQL-Azure",
-            "host": "40.124.169.219",
-            "port": "3306",
-            "user": "mysqluser",
-            "password": "mysqlpw",
-            "database": "inventory",
-            "ssl": false,
-            "schema": {
-                "create_tables": [
-                    "CREATE TABLE `Tank` (`id` int NOT NULL AUTO_INCREMENT, well_id nvarchar(220) NULL, flow_rate int NULL, pressure int NULL, temperature int NULL, timestamp nvarchar(220) NULL, production_volume_water_previous nvarchar(220) NULL, production_volume_gas_previous nvarchar(220) NULL, production_volume_oil_previous nvarchar(220) NULL, production_volume_water nvarchar(220) NULL, production_volume_gas nvarchar(220) NULL, production_volume_oil nvarchar(220) NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB"
-                ],
-                "sink_to": "Tank",
-                "select": [
-                    "well_id",
-                    "flow_rate",
-                    "pressure",
-                    "temperature",
-                    "timestamp",
-                    "production_volume_water_previous",
-                    "production_volume_gas_previous",
-                    "production_volume_oil_previous",
-                    "production_volume_water",
-                    "production_volume_gas",
-                    "production_volume_oil"
-                ]
-            }
-        },
-        {
-            "type": "logfile",
-            "name": "Logfile",
-            "schema": {
-                "filename": "6459fff11628d80b5c8248fd.log",
-                "logpath": "C:/tmp/Agent2/conf/sensor_data_644b808429387d3cb0318da0"
-            }
-        }
-    ]
+	"id": "642be32d8eb87fa733ea8820",
+	"name": "etl-service",
+	"jobId": "642cf020f2f773d185b62ba5",
+	"jobTaskId": "642cfa453637c974b6fcf4f6",
+	"build_operation": {
+		"ops": {
+			"match": {
+				"__comment": "specification of an op, specific to op",
+				"at": "$",
+				"where": {
+					"field": "place",
+					"operator": "=",
+					"value": "SaiGon"
+				}
+			},
+			"rollup": {
+				"__comment": "this operator is based on a window of data"
+			},
+			"aggregrate": {
+				"__comment": "this operator can be applied for a single message or a window of data"
+			},
+			"enrich": {
+				"__comment": "for a single data",
+				"what": {
+					"op": "add",
+					"reference_type": "internal",
+					"reference_data": "TP Ho Chi Minh",
+					"added_field_name": "full_name"
+				}
+			}
+		}
+	},
+	"userId": "641d682a4280a95d3da9168a",
+	"is_enabled": true,
+	"image": "etl-modules",
+	"version": "latest",
+	"source": {
+		"id": "6424fb07a2f9c3246f4e2239",
+		"type": "Pulsar",
+		"name": "Pulsar",
+		"hostname": "localhost",
+		"port": 8080,
+		"tenant": "public",
+		"namespace": "default",
+		"api-version": "/admin/v2",
+		"topic": "non-persistent://public/default/topic1103",
+		"schema": {
+			"version": 0,
+			"type": "JSON",
+			"timestamp": 0,
+			"data": {
+				"type": "record",
+				"name": "CompanyRecord",
+				"fields": [
+					{
+						"name": "company_name",
+						"type": [
+							"null",
+							"string"
+						]
+					},
+					{
+						"name": "place",
+						"type": [
+							"null",
+							"string"
+						]
+					},
+					{
+						"name": "tax_number",
+						"type": [
+							"null",
+							"string"
+						]
+					},
+					{
+						"name": "revenue",
+						"type": [
+							"null",
+							"int"
+						]
+					}
+				]
+			},
+			"properties": {}
+		}
+	},
+	"destinations": [
+		{
+			"id": "64265e259a133390db5998f6",
+			"type": "MySQL",
+			"name": "MySQL",
+			"host": "192.168.1.92",
+			"port": "8080",
+			"user": "root1",
+			"password": "root",
+			"database": "etl",
+			"ssl": true,
+			"schema": {
+				"create_tables": [
+					"CREATE TABLE `company` (`id` int NOT NULL AUTO_INCREMENT, `company_name` varchar(200) NOT NULL, `place` varchar(14) NOT NULL, `tax_number` varchar(16) NOT NULL, `revenue` varchar(20) NOT NULL, PRIMARY KEY (`id`)) ENGINE=InnoDB"
+				],
+				"sink_to": "company",
+				"select": [
+					"company_name",
+					"place",
+					"tax_number",
+					"revenue"
+				]
+			}
+		},
+		{
+			"id": "6426aad0bd9f764540651e26",
+			"type": "Oracle",
+			"name": "Oracle",
+			"connection": "oracleconnectionstring",
+			"schema": "empty"
+		}
+	],
+	"tenant_id": "641d68184280a95d3da91689"
 }
