@@ -80,7 +80,7 @@ class Threaded_worker(threading.Thread):
                 "name": "Logfile",
                 "schema": {
                     "filename": f"{file_job_name}.log",
-                    "logpath": f"{etl_mount_folder}/{folder_name}"
+                    "logpath": f"{PATH_MAP}/{folder_name}/"
                 }
             }
 
